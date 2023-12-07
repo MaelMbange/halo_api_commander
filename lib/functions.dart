@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'medal.dart';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart';
 
 Future<dynamic> responseToMedalsRequest() async {
   final response = await http.get(
@@ -73,5 +74,46 @@ void startDownloadImages() async {
   var medals = parseMedals(body);
   for (var medal in medals) {
     await downloadImage(medal.large, path, medal.getFilename());
+  }
+}
+
+void startConcatenateImages({int start = 0, int end = 0}) async {
+  var username =
+      Platform.environment['USERNAME'] ?? Platform.environment['USER'];
+
+  var directory =
+      Directory('C:/Users/$username/Documents/HaloInfinite/medals/');
+
+  List<File> files =
+      directory.listSync().map((file) => File(file.path)).toList();
+
+  List<Image>? images = files
+      .getRange(start, end)
+      .map((e) => decodePng(e.readAsBytesSync()))
+      .cast<Image>()
+      .toList();
+
+  if (images.isNotEmpty) {
+    Image newImage = Image(
+      width: images[0].width * images.length,
+      height: images[0].height,
+      numChannels: 4,
+      backgroundColor: ColorRgba8(0, 0, 0, 0),
+    );
+
+    for (var img in images) {
+      newImage = compositeImage(
+        newImage,
+        img,
+        dstX: images.indexOf(img) * img.width,
+        dstY: 0,
+        blend: BlendMode.difference,
+      );
+    }
+
+    File('C:/Users/$username/Documents/HaloInfinite/imageBonus.png')
+        .writeAsBytes(encodePng(newImage));
+  } else {
+    print("Une ou plusieurs images n'ont pas pu être chargées.");
   }
 }
